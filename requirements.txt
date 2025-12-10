@@ -1,0 +1,31 @@
+# Core dependencies
+numpy>=1.26.0
+opencv-python>=4.9.0
+Pillow>=10.1.0
+PyYAML>=6.0.1
+python-dotenv>=1.0.0
+scipy>=1.11.0  # For gaussian filtering in SAM post-processing
+
+# Database
+sqlalchemy>=2.0.23
+pandas>=2.1.0
+
+# Model inference
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0  # YOLO models
+transformers>=4.30.0  # For DETR models
+supervision>=0.16.0  # For bounding box utilities
+
+# Roboflow integration
+roboflow>=1.1.0
+inference-sdk>=0.9.0  # For Roboflow Serverless API
+# Note: inference package requires Python <3.13
+# Using roboflow package for API access and inference-sdk for serverless
+
+# SAM (Segment Anything Model) for post-processing
+segment-anything>=1.0
+
+# Utilities
+requests>=2.31.0
+tqdm>=4.65.0

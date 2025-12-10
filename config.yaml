@@ -1,0 +1,61 @@
+models:
+  detection:
+    type: roboflow
+    source: roboflow-serverless
+    local_path: models/detection/best.pt
+    roboflow_workspace: billandr
+    roboflow_project: tide-recorder
+    roboflow_version: 6
+    roboflow_model_id: tide-recorder/6
+    roboflow_serverless_url: https://serverless.roboflow.com
+    confidence_threshold: 0.9
+    iou_threshold: 0.65
+  segmentation:
+    enabled: false
+    type: sam
+    source: local
+    local_path: models/segmentation/sam_vit_h.pth
+    checkpoint_type: vit_h
+processing:
+  default_input_dir: data/input
+  resize_enabled: false
+  resize_width: 640
+  batch_size: 1
+  save_processed_images: true
+  save_annotated_images: true
+  image_format: jpg
+  target_classes:
+  - scale
+  - underwater_scale
+measurement:
+  pixels_per_cm: 18.16750541608843
+  scale_height_cm: 45.0
+  method: segmentation
+calibration:
+  pixels_per_cm: 18.20376790194889
+  calibration_image: data\input\IMG_0456.JPG
+  image_width: 330
+  image_height: 611
+  point1:
+  - 85
+  - 7
+  point2:
+  - 87
+  - 463
+  pixel_distance: 456.0043859438196
+  physical_distance_cm: 25.05
+output:
+  csv_export: true
+  json_export: true
+  database: true
+  annotation:
+    draw_boxes: true
+    draw_labels: true
+    draw_confidence: true
+    box_thickness: 2
+    font_scale: 0.6
+database:
+  path: data/output/measurements.db
+logging:
+  level: DEBUG
+  log_file: logs/water_level.log

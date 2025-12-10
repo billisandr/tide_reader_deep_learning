@@ -1,0 +1,127 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+docs/
+CHANGELOG.md
+
+# Data directories
+data/input/*
+data/output/*
+data/processed/*
+data/debug/*
+data/calibration/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+!data/processed/.gitkeep
+!data/debug/.gitkeep
+!data/calibration/.gitkeep
+!data/input_tests/
+data/input_tests/*
+!data/input_tests/.gitkeep
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Exported data files
+*.csv
+*.json
+!config.yaml
+!secrets.yaml.template
+
+# Compressed archives in data directories
+data/**/*.zip
+data/**/*.rar
+data/**/*.7z
+data/**/*.tar.gz
+data/**/*.tar
+
+# Models (large files)
+models/*
+!models/.gitkeep
+!models/README.md
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.pb
+*.tflite
+
+# Secrets
+secrets.yaml
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Cache directories
+.cache/
+.cache_ggshield/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pypackages__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing and coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+nul
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~

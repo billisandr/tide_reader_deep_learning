@@ -1,0 +1,89 @@
+# Auto-detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.py text eol=lf
+*.pyx text eol=lf
+*.pxd text eol=lf
+*.pyi text eol=lf
+
+# Configuration files
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+*.rst text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Git files
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# Binary files - images
+*.jpg binary
+*.jpeg binary
+*.JPG binary
+*.JPEG binary
+*.png binary
+*.PNG binary
+*.gif binary
+*.bmp binary
+*.tiff binary
+*.ico binary
+*.svg binary
+
+# Binary files - models and data
+*.pt binary
+*.pth binary
+*.onnx binary
+*.pb binary
+*.h5 binary
+*.hdf5 binary
+*.safetensors binary
+*.tflite binary
+
+# Binary files - databases
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Binary files - archives
+*.zip binary
+*.rar binary
+*.7z binary
+*.tar binary
+*.gz binary
+
+# Binary files - executables
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# Export diff drivers for notebooks (if using)
+*.ipynb diff=jupyternotebook
+
+# Mark generated files
+*.pyc binary
+*.pyo binary
+*.pyd binary
+
+# Linguist overrides (for GitHub language statistics)
+*.ipynb linguist-documentation
+data/** linguist-vendored
+models/** linguist-vendored
+docs/** linguist-documentation
