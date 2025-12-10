@@ -14,8 +14,8 @@ models:
     enabled: false
     type: sam
     source: local
-    local_path: models/segmentation/sam_vit_h.pth
-    checkpoint_type: vit_h
+    local_path: models/segmentation/sam_vit_b.pth
+    checkpoint_type: vit_b
 processing:
   default_input_dir: data/input
   resize_enabled: false
@@ -59,3 +59,7 @@ database:
 logging:
   level: DEBUG
   log_file: logs/water_level.log
+debug:
+  enabled: true
+  save_intermediate_steps: true
+  output_dir: data/debug

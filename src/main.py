@@ -132,10 +132,17 @@ def prompt_user_choices(config):
     print("    Useful for: precise scale boundaries, underwater scale masking")
 
     sam_enabled = config['models']['segmentation'].get('enabled', False)
-    print(f"    Config default: {'Enabled' if sam_enabled else 'Disabled'}")
+    default_choice = 'y' if sam_enabled else 'n'
+    print(f"    Config setting: {'Enabled' if sam_enabled else 'Disabled'}")
 
-    response = input("    Enable SAM post-processing? (y/n, default: n): ").strip().lower()
-    choices['use_sam'] = response == 'y'
+    response = input(f"    Enable SAM post-processing? (y/n, default: {default_choice}): ").strip().lower()
+
+    # Use config default if user just presses Enter, otherwise respect user choice
+    if response == '':
+        choices['use_sam'] = sam_enabled
+    else:
+        choices['use_sam'] = response == 'y'
+
     print(f"    SAM: {'Enabled' if choices['use_sam'] else 'Disabled'}")
 
     print("\n" + "="*60)

@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple, List
 import supervision as sv
+from .debug_visualizer import DebugVisualizer
 
 
 class WaterLevelDetector:
@@ -46,8 +47,17 @@ class WaterLevelDetector:
             self.annotated_dir = self.output_dir / 'annotated'
             self.annotated_dir.mkdir(parents=True, exist_ok=True)
 
+        # Initialize debug visualizer
+        debug_enabled = config.get('debug', {}).get('enabled', False)
+        self.debug_viz = DebugVisualizer(
+            base_dir='data/debug',
+            enabled=debug_enabled
+        )
+
         self.logger.info(f"Detector initialized with confidence={self.conf_threshold}")
         self.logger.info(f"Target classes: {self.target_classes}")
+        if debug_enabled:
+            self.logger.info(f"Debug visualization enabled: {self.debug_viz.get_session_path()}")
 
     def process_image(self, image_path: str) -> Optional[Dict[str, Any]]:
         """
@@ -68,12 +78,20 @@ class WaterLevelDetector:
                 self.logger.error(f"Failed to read image: {image_path}")
                 return None
 
+            # DEBUG STEP 1: Save original image with metadata
+            self._debug_step_original(image, image_path)
+
             # Run detection
             detections = self._run_detection(image)
 
             if detections is None or len(detections) == 0:
                 self.logger.warning(f"No detections found in {Path(image_path).name}")
+                self._debug_step_no_detections(image)
+                self.debug_viz.cleanup_empty_session()
                 return self._create_failed_result(image_path, image, "No detections")
+
+            # DEBUG STEP 2: Save all model detections
+            self._debug_step_all_detections(image, detections)
 
             # Extract waterline and scale information
             result = self._extract_measurements(image, detections, image_path)
@@ -82,10 +100,14 @@ class WaterLevelDetector:
             if self.config['processing']['save_annotated_images']:
                 self._save_annotated_image(image, detections, result, image_path)
 
+            # Cleanup empty debug session if nothing was saved
+            self.debug_viz.cleanup_empty_session()
+
             return result
 
         except Exception as e:
             self.logger.error(f"Error processing {image_path}: {e}", exc_info=True)
+            self.debug_viz.cleanup_empty_session()
             return None
 
     def _run_detection(self, image: np.ndarray) -> Optional[Dict[str, Any]]:
@@ -231,7 +253,7 @@ class WaterLevelDetector:
             self.logger.error(f"Detection failed: {e}", exc_info=True)
             return None
 
-    def _refine_waterline_with_sam(self, image: np.ndarray, scale_box: np.ndarray) -> Optional[float]:
+    def _refine_waterline_with_sam(self, image: np.ndarray, scale_box: np.ndarray) -> Optional[Tuple[float, np.ndarray, np.ndarray]]:
         """
         Refine waterline detection using SAM to segment underwater scale region.
 
@@ -240,7 +262,7 @@ class WaterLevelDetector:
             scale_box: Bounding box of the scale [x1, y1, x2, y2]
 
         Returns:
-            Refined waterline Y-coordinate or None if refinement fails
+            Tuple of (refined waterline Y-coordinate, full scale mask, underwater mask) or None if refinement fails
         """
         if self.segmentation_model is None:
             return None
@@ -251,16 +273,14 @@ class WaterLevelDetector:
             # Convert image to RGB (SAM expects RGB)
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-            # Set image for SAM predictor
-            from segment_anything import SamPredictor
-            predictor = SamPredictor(self.segmentation_model)
-            predictor.set_image(image_rgb)
+            # Set image for SAM predictor (self.segmentation_model is already a SamPredictor)
+            self.segmentation_model.set_image(image_rgb)
 
             # Use scale bounding box as prompt for SAM
             input_box = np.array(scale_box, dtype=np.float32)
 
             # Generate segmentation mask
-            masks, scores, logits = predictor.predict(
+            masks, scores, logits = self.segmentation_model.predict(
                 point_coords=None,
                 point_labels=None,
                 box=input_box[None, :],
@@ -287,8 +307,9 @@ class WaterLevelDetector:
 
             if waterline_y is not None:
                 self.logger.info(f"SAM refined waterline at y={waterline_y:.1f}")
+                return (waterline_y, scale_mask, underwater_mask)
 
-            return waterline_y
+            return None
 
         except Exception as e:
             self.logger.error(f"SAM refinement failed: {e}", exc_info=True)
@@ -444,17 +465,36 @@ class WaterLevelDetector:
 
         # Initial waterline estimate: top edge of underwater_scale bbox
         waterline_y = underwater_scale_box[1]  # Top Y coordinate
+        waterline_y_initial = waterline_y  # Store for comparison
         waterline_conf = underwater_scale_conf
         sam_refined = False
+        sam_scale_mask = None
+        sam_underwater_mask = None
+
+        # DEBUG STEP 3: Filtered target detections with initial waterline
+        self._debug_step_filtered_detections(
+            image, scale_box, underwater_scale_box, waterline_y,
+            scale_conf, underwater_scale_conf
+        )
 
         # Refine waterline with SAM if enabled
         if self.segmentation_model is not None:
             self.logger.info("Attempting SAM refinement for precise waterline detection")
-            refined_waterline_y = self._refine_waterline_with_sam(image, scale_box)
-            if refined_waterline_y is not None:
+            refined_result = self._refine_waterline_with_sam(image, scale_box)
+            if refined_result is not None:
+                refined_waterline_y, sam_scale_mask, sam_underwater_mask = refined_result
                 waterline_y = refined_waterline_y
                 sam_refined = True
                 self.logger.info(f"Using SAM-refined waterline at y={waterline_y:.1f}")
+
+                # DEBUG STEP 4: Full SAM scale segmentation
+                self._debug_step_sam_scale_mask(image, sam_scale_mask)
+
+                # DEBUG STEP 5: SAM underwater mask with refined waterline
+                self._debug_step_sam_underwater_mask(image, sam_underwater_mask, waterline_y)
+
+                # DEBUG STEP 6: Waterline comparison (bbox vs SAM)
+                self._debug_step_waterline_comparison(image, waterline_y_initial, waterline_y)
             else:
                 self.logger.warning(f"SAM refinement failed, using underwater_scale top edge at y={waterline_y:.1f}")
         else:
@@ -463,6 +503,14 @@ class WaterLevelDetector:
         # Calculate measurements
         measurements = self._calculate_water_level(
             image, waterline_y, underwater_scale_box, scale_box
+        )
+
+        # DEBUG STEP 7: Measurement breakdown
+        self._debug_step_measurements(
+            image, scale_box[1], waterline_y,
+            self.pixels_per_cm or 1.0,
+            measurements['scale_above_water_cm'],
+            measurements['water_level_cm']
         )
 
         # Create result dictionary
@@ -485,6 +533,12 @@ class WaterLevelDetector:
 
         self.logger.info(f"Water level: {result['water_level_cm']:.2f} cm, "
                         f"confidence: {result['confidence']:.3f}")
+
+        # DEBUG STEP 8: Final annotated result with all information
+        self._debug_step_final_result(
+            image, scale_box, underwater_scale_box, waterline_y,
+            result, scale_conf, underwater_scale_conf, sam_refined
+        )
 
         return result
 
@@ -627,3 +681,280 @@ class WaterLevelDetector:
 
         except Exception as e:
             self.logger.error(f"Failed to save annotated image: {e}")
+
+    # Debug visualization helper methods
+
+    def _debug_step_original(self, image: np.ndarray, image_path: str) -> None:
+        """DEBUG STEP 1: Save original image with metadata overlay."""
+        if not self.debug_viz.enabled:
+            return
+
+        annotated = image.copy()
+        height, width = annotated.shape[:2]
+
+        # Add metadata overlay
+        metadata_lines = [
+            f"File: {Path(image_path).name}",
+            f"Dimensions: {width}x{height}",
+            f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        ]
+
+        self.debug_viz._add_info_panel(annotated, metadata_lines, position='top')
+        self.debug_viz.save_debug_step(annotated, "original", "Original input image")
+
+    def _debug_step_no_detections(self, image: np.ndarray) -> None:
+        """Debug helper for no detections case."""
+        if not self.debug_viz.enabled:
+            return
+
+        annotated = image.copy()
+        cv2.putText(
+            annotated,
+            "NO DETECTIONS FOUND",
+            (50, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.0,
+            (0, 0, 255),
+            2
+        )
+        self.debug_viz.save_debug_step(annotated, "no_detections", "Detection failed")
+
+    def _debug_step_all_detections(self, image: np.ndarray, detections: Dict[str, Any]) -> None:
+        """DEBUG STEP 2: Save all model detections before filtering."""
+        if not self.debug_viz.enabled:
+            return
+
+        # Convert detections to format expected by annotator
+        det_list = []
+        for i, (box, cls, conf) in enumerate(zip(
+            detections['boxes'],
+            detections['class_names'],
+            detections['confidences']
+        )):
+            det_list.append({
+                'class': cls,
+                'confidence': conf,
+                'bbox': box
+            })
+
+        annotated = self.debug_viz.annotate_detections(
+            image,
+            det_list,
+            title="All Model Detections",
+            show_confidence=True
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "all_detections",
+            f"All {len(det_list)} detections before filtering"
+        )
+
+    def _debug_step_filtered_detections(
+        self,
+        image: np.ndarray,
+        scale_box: np.ndarray,
+        underwater_scale_box: np.ndarray,
+        waterline_y: float,
+        scale_conf: float,
+        underwater_scale_conf: float
+    ) -> None:
+        """DEBUG STEP 3: Save filtered target detections with initial waterline."""
+        if not self.debug_viz.enabled:
+            return
+
+        det_list = [
+            {
+                'class': 'scale',
+                'confidence': scale_conf,
+                'bbox': scale_box
+            },
+            {
+                'class': 'underwater_scale',
+                'confidence': underwater_scale_conf,
+                'bbox': underwater_scale_box
+            }
+        ]
+
+        annotated = self.debug_viz.annotate_detections(
+            image,
+            det_list,
+            title="Filtered Target Detections",
+            show_confidence=True
+        )
+
+        # Add initial waterline estimate
+        annotated = self.debug_viz.annotate_waterline(
+            annotated,
+            int(waterline_y),
+            label="Initial Waterline (BBox)",
+            color=(0, 165, 255)  # Orange
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "filtered_detections",
+            "Target classes with initial waterline estimate"
+        )
+
+    def _debug_step_sam_scale_mask(
+        self,
+        image: np.ndarray,
+        scale_mask: np.ndarray
+    ) -> None:
+        """DEBUG STEP 4: Save full SAM scale segmentation."""
+        if not self.debug_viz.enabled or scale_mask is None:
+            return
+
+        annotated = image.copy()
+
+        # Create colored mask overlay (green for full scale)
+        mask_color = np.zeros_like(annotated)
+        mask_color[scale_mask > 0] = [0, 255, 0]  # Green (BGR)
+
+        # Blend mask with original image
+        annotated = cv2.addWeighted(annotated, 0.6, mask_color, 0.4, 0)
+
+        # Add title
+        cv2.putText(
+            annotated,
+            "SAM: Full Scale Segmentation",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.0,
+            (255, 255, 255),
+            2
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "sam_full_scale_mask",
+            "SAM full scale segmentation"
+        )
+
+    def _debug_step_sam_underwater_mask(
+        self,
+        image: np.ndarray,
+        underwater_mask: np.ndarray,
+        waterline_y: float
+    ) -> None:
+        """DEBUG STEP 5: Save SAM underwater mask with refined waterline."""
+        if not self.debug_viz.enabled or underwater_mask is None:
+            return
+
+        annotated = self.debug_viz.annotate_sam_mask(
+            image,
+            underwater_mask,
+            int(waterline_y),
+            alpha=0.4
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "sam_underwater_mask",
+            "SAM underwater region with refined waterline"
+        )
+
+    def _debug_step_waterline_comparison(
+        self,
+        image: np.ndarray,
+        bbox_waterline: float,
+        sam_waterline: float
+    ) -> None:
+        """DEBUG STEP 6: Save waterline comparison (bbox vs SAM)."""
+        if not self.debug_viz.enabled:
+            return
+
+        annotated = self.debug_viz.create_comparison_view(
+            image,
+            int(bbox_waterline),
+            int(sam_waterline)
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "waterline_comparison",
+            f"BBox vs SAM waterline (diff: {abs(sam_waterline - bbox_waterline):.1f}px)"
+        )
+
+    def _debug_step_measurements(
+        self,
+        image: np.ndarray,
+        scale_top_y: float,
+        waterline_y: float,
+        pixels_per_cm: float,
+        scale_above_water_cm: float,
+        water_level_cm: float
+    ) -> None:
+        """DEBUG STEP 7: Save measurement breakdown visualization."""
+        if not self.debug_viz.enabled:
+            return
+
+        annotated = self.debug_viz.annotate_measurements(
+            image,
+            int(scale_top_y),
+            int(waterline_y),
+            pixels_per_cm,
+            scale_above_water_cm,
+            water_level_cm
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "measurement_breakdown",
+            "Detailed measurement annotations"
+        )
+
+    def _debug_step_final_result(
+        self,
+        image: np.ndarray,
+        scale_box: np.ndarray,
+        underwater_scale_box: np.ndarray,
+        waterline_y: float,
+        result: Dict[str, Any],
+        scale_conf: float,
+        underwater_scale_conf: float,
+        sam_refined: bool
+    ) -> None:
+        """DEBUG STEP 8: Save final annotated result with all information."""
+        if not self.debug_viz.enabled:
+            return
+
+        det_list = [
+            {
+                'class': 'scale',
+                'confidence': scale_conf,
+                'bbox': scale_box
+            },
+            {
+                'class': 'underwater_scale',
+                'confidence': underwater_scale_conf,
+                'bbox': underwater_scale_box
+            }
+        ]
+
+        method = "SAM Refined" if sam_refined else "BBox Detection"
+
+        metadata = {
+            'Model': self.config['models']['detection']['type'],
+            'Source': self.config['models']['detection']['source'],
+            'Calibration': f"{self.pixels_per_cm:.2f} px/cm" if self.pixels_per_cm else "Not set",
+            'Image': result['image_name']
+        }
+
+        annotated = self.debug_viz.add_final_annotations(
+            image,
+            det_list,
+            int(waterline_y),
+            result['water_level_cm'],
+            result['scale_above_water_cm'],
+            method,
+            result['confidence'],
+            metadata
+        )
+
+        self.debug_viz.save_debug_step(
+            annotated,
+            "final_result",
+            "Complete annotated result"
+        )

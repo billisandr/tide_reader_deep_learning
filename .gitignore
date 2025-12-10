@@ -52,6 +52,10 @@ data/calibration/*
 data/input_tests/*
 !data/input_tests/.gitkeep
 
+# Demo directory (tracked for documentation)
+!demo/
+!demo/**
+
 # Databases
 *.db
 *.sqlite
@@ -72,15 +76,12 @@ data/**/*.tar.gz
 data/**/*.tar
 
 # Models (large files)
-models/*
+models/detection/*
+models/segmentation/*
 !models/.gitkeep
+!models/detection/.gitkeep
+!models/segmentation/.gitkeep
 !models/README.md
-*.pt
-*.pth
-*.onnx
-*.safetensors
-*.pb
-*.tflite
 
 # Secrets
 secrets.yaml
@@ -123,5 +124,4 @@ nul
 *.tmp
 *.temp
 *.bak
-*.swp
 *~
