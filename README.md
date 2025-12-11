@@ -857,24 +857,9 @@ To train a custom detection model:
 4. Export model to .pt format
 5. Place in `models/detection/` and update config.yaml
 
-See Ultralytics documentation for training details.
-
 ## License
 
 This project is licensed under the BSD 3-Clause License. See [LICENSE](LICENSE) file for details.
-
-## Citation
-
-If you use this system in your research, please cite:
-
-```bibtex
-@software{tide_reader_dl,
-  title={Water Level Measurement System: Deep Learning},
-  author={SenseLAB, Technical University of Crete},
-  year={2024},
-  url={https://github.com/your-repo/tide_reader_DL}
-}
-```
 
 ## Support
 
