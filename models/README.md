@@ -38,9 +38,35 @@ models/
 ### Segmentation Models (Optional)
 
 - **SAM (Segment Anything Model)**: `.pth` checkpoint files
-  - Download from: <https://github.com/facebookresearch/segment-anything#model-checkpoints>
-  - Options: `vit_h` (default, 2.4GB), `vit_l` (1.2GB), `vit_b` (375MB)
   - Used for post-processing to refine waterline detection
+  - Download from Facebook Research: <https://github.com/facebookresearch/segment-anything#model-checkpoints>
+
+**Download SAM Models:**
+
+```bash
+cd models/segmentation
+
+# Choose ONE of these models:
+
+# Option 1: vit_b (358 MB) - Fastest, good quality
+wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth -O sam_vit_b.pth
+
+# Option 2: vit_l (1.2 GB) - Balanced
+wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth -O sam_vit_l.pth
+
+# Option 3: vit_h (2.4 GB) - Best quality, slowest
+wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -O sam_vit_h.pth
+```
+
+**Configure SAM in config.yaml:**
+
+```yaml
+segmentation:
+  enabled: true
+  type: sam
+  checkpoint_type: vit_b  # or vit_l, vit_h
+  local_path: models/segmentation/sam_vit_b.pth
+```
 
 #### SAM Waterline Refinement
 

@@ -60,13 +60,48 @@ python -m src.calibration
 ```
 
 A file browser will open:
+
 1. Select an image with clear above-water scale markings
 2. Click two points on the above-water scale
 3. Enter the physical distance between the points (in cm)
 
 The calibration data will be saved to config.yaml.
 
-## Step 5: Add Test Images
+## Step 5: Download SAM Model (Optional)
+
+SAM post-processing can refine waterline detection in some scenarios, but may not improve accuracy for all use cases.
+
+**Note:** The DETR/YOLO detection model often provides accurate results on its own. Use the debug visualizer to compare bbox vs SAM waterline before committing to SAM.
+
+To download the SAM segmentation model:
+
+```bash
+cd models/segmentation
+
+# Choose ONE of these models:
+
+# Option 1: vit_b (358 MB) - Fastest, good quality [RECOMMENDED]
+wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth -O sam_vit_b.pth
+
+# Option 2: vit_l (1.2 GB) - Balanced
+wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth -O sam_vit_l.pth
+
+# Option 3: vit_h (2.4 GB) - Best quality, slowest
+wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth -O sam_vit_h.pth
+```
+
+Then enable SAM in config.yaml:
+
+```yaml
+segmentation:
+  enabled: true
+  checkpoint_type: vit_b  # or vit_l, vit_h
+  local_path: models/segmentation/sam_vit_b.pth
+```
+
+Skip this step to use only the detection model (faster and often equally accurate). Enable debug mode to visually compare detection methods.
+
+## Step 6: Add Test Images
 
 ```bash
 # Place your test images in:
@@ -75,13 +110,14 @@ data/input/
 
 Or select a directory via GUI when running the system.
 
-## Step 6: Run the System
+## Step 7: Run the System
 
 ```bash
 python -m src.main
 ```
 
 The system will:
+
 1. Ask for configuration (input directory, SAM usage)
 2. Load your model
 3. Start processing images
@@ -90,6 +126,7 @@ The system will:
 ## Output
 
 Results are saved in `data/output/`:
+
 - `measurements_TIMESTAMP.csv` - CSV export
 - `measurements_TIMESTAMP.json` - JSON export
 - `measurements.db` - SQLite database
@@ -104,6 +141,7 @@ Press `Ctrl+C` to stop the system gracefully.
 ### "Calibration required" error
 
 Run calibration:
+
 ```bash
 python -m src.calibration
 ```
@@ -115,6 +153,7 @@ Check your model path in config.yaml or verify Roboflow API key in secrets.yaml.
 ### "No module named 'X'" error
 
 Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```

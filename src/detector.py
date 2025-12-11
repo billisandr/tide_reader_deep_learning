@@ -776,11 +776,13 @@ class WaterLevelDetector:
             }
         ]
 
+        # Position bbox labels below the waterline
         annotated = self.debug_viz.annotate_detections(
             image,
             det_list,
             title="Filtered Target Detections",
-            show_confidence=True
+            show_confidence=True,
+            label_y_position=int(waterline_y)
         )
 
         # Add initial waterline estimate

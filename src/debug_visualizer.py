@@ -86,7 +86,8 @@ class DebugVisualizer:
         image: np.ndarray,
         detections: List[Dict[str, Any]],
         title: str = "Detections",
-        show_confidence: bool = True
+        show_confidence: bool = True,
+        label_y_position: Optional[int] = None
     ) -> np.ndarray:
         """
         Annotate image with bounding boxes and labels for all detections.
@@ -96,6 +97,8 @@ class DebugVisualizer:
             detections: List of detection dicts with keys: class, confidence, bbox
             title: Title to display at top of image
             show_confidence: Whether to show confidence scores
+            label_y_position: Optional Y-coordinate to position all labels at (e.g., below waterline).
+                            If None, labels are positioned at the top of each bbox.
 
         Returns:
             Annotated image copy
@@ -127,12 +130,25 @@ class DebugVisualizer:
             if show_confidence:
                 label += f" {confidence:.2f}"
 
-            # Draw label background
+            # Determine label position
             label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+
+            if label_y_position is not None:
+                # Position label at specified Y coordinate (below waterline)
+                label_bg_y1 = label_y_position + 10
+                label_bg_y2 = label_bg_y1 + label_size[1] + 10
+                label_text_y = label_bg_y2 - 5
+            else:
+                # Position label at top of bounding box (default)
+                label_bg_y1 = y1 - label_size[1] - 10
+                label_bg_y2 = y1
+                label_text_y = y1 - 5
+
+            # Draw label background
             cv2.rectangle(
                 annotated,
-                (x1, y1 - label_size[1] - 10),
-                (x1 + label_size[0], y1),
+                (x1, label_bg_y1),
+                (x1 + label_size[0], label_bg_y2),
                 color,
                 -1
             )
@@ -141,7 +157,7 @@ class DebugVisualizer:
             cv2.putText(
                 annotated,
                 label,
-                (x1, y1 - 5),
+                (x1, label_text_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
                 (255, 255, 255),
