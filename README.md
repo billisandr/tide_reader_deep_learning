@@ -36,7 +36,6 @@ Automated water level detection using pretrained deep learning models (YOLO, RT-
 - [Example Processing Workflow](#example-processing-workflow)
 - [Advanced Usage](#advanced-usage)
 - [License](#license)
-- [Citation](#citation)
 - [Support](#support)
 
 ## Overview
@@ -576,7 +575,7 @@ git clone <repo-url>
 cd tide_reader_DL
 ```
 
-2. **Create virtual environment:**
+1. **Create virtual environment:**
 
 ```bash
 python -m venv .venv
@@ -584,13 +583,13 @@ python -m venv .venv
 # source .venv/bin/activate  # Linux/Mac
 ```
 
-3. **Install dependencies:**
+1. **Install dependencies:**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-4. **Setup development environment:**
+1. **Setup development environment:**
 
 ```bash
 # Copy configuration templates
